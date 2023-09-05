@@ -54,22 +54,27 @@ async function getVideos() {
     let view = `${videos.items
       .map(
         (video) => `
-    <div >
-        <div
-        class="w-full bg-gray-500 aspect-w-2 aspect-h-2 rounded-md overflow-hidden group-hover:opacity-75 lg:aspect-none" style="border-radius:3.375rem">
-            <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.description}" class="w-full">
+        <div>
+        <div class="w-full bg-gray-500 aspect-w-2 aspect-h-2 rounded-md overflow-hidden group-hover:opacity-75 lg:aspect-none" style="border-radius:3.375rem">
+          <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.description}" class="w-full">
         </div>
-        <div class="mt-4 flex justify-between">
+        <div class="mt-4 flex flex-col items-center justify-center">
+          <h3 class="text-sm text-gray-500">
+            <span aria-hidden="true" class="absolute inset-0"></span>
+            ${video.snippet.title}
+          </h3>
           <a href="https://youtube.com/watch?v=${video.id.videoId}">
-              <h3 class="text-sm text-gray-500">
-                  <span aria-hidden="true" class="absolute inset-0"></span>
-                  ${video.snippet.title}
-              </h3>
-            </a>
+          <i class="fab fa-youtube text-3xl text-gray-500 hover:text-gray-700"></i>
+
+
+
+
+          </a>
         </div>
-    </div>`,
+      </div>
+      `,
       )
-      .slice(0, 14)
+      .slice(0, 20)
       .join("")}`;
     contentVideos.innerHTML = view;
   } catch (error) {
