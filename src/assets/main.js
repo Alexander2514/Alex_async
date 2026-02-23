@@ -12,7 +12,22 @@ const API_YOUTUBE =
 'https://youtube-v31.p.rapidapi.com/search?channelId=UC34wpCgr3l9cG0RtFdTTS-Q&part=snippet%2Cid&order=date&maxResults=12';
 const API_SPOTIFY =
 'https://spotify23.p.rapidapi.com/artist_albums/?id=0GDGKpJFhVpcjIGF8N6Ewt&offset=0&limit=20';
-const APY_PLAYLIST='https://spotify23.p.rapidapi.com/playlist_tracks/?id=37i9dQZF1DZ06evO0lb5gk&offset=0&limit=100'
+const APY_PLAYLIST='https://spotify23.p.rapidapi.com/tracks/?ids=4WNcduiCmDNfmTEz7JvmLv'
+
+const API_BASE_URL = 'https://corsproxy.io/?https://api.deezer.com';
+const id = '6110057324'
+
+const searchTracks = async () => {
+    try {
+        const responde = await fetch(`${API_BASE_URL}/playlist/${id}`);
+        const json = await responde.json();
+        const data = json.tracks.data;
+        return data;
+    } catch (error) {
+        console.error('Error fetching tracks:', error);
+        throw error;
+    }
+}
 
 const optionsYoutube = {
   method: "GET",
@@ -32,21 +47,17 @@ const optionsSpotify = {
 
 const optionsPlaylist= {
   method:"GET",
-          headers:{
-              'X-RapidAPI-Key': '296a043d0emsh0dbde482fbc99ddp1ce419jsn530d82cea9a9',
-              'X-RapidAPI-Host': 'spotify23.p.rapidapi.com'
+  headers:{
+    'X-RapidAPI-Key': 'b89c50b6e3mshff71f485c9cb1d2p130d27jsn5cdc3763839d',
+    'X-RapidAPI-Host': 'spotify23.p.rapidapi.com'
   },
-
 }
+
 async function fetchData(urlApi, options) {
   const response = await fetch(urlApi, options);
   const data = await response.json();
-  
   return data;
-  
 }
-
-
 
 async function getVideos() {
   try {
@@ -65,10 +76,6 @@ async function getVideos() {
           </h3>
           <a href="https://youtube.com/watch?v=${video.id.videoId}">
           <i class="fab fa-youtube text-3xl text-gray-500 hover:text-gray-700"></i>
-
-
-
-
           </a>
         </div>
       </div>
@@ -79,8 +86,6 @@ async function getVideos() {
     contentVideos.innerHTML = view;
   } catch (error) {
     console.log(error);
-
-   
   }
 } 
 
@@ -104,9 +109,6 @@ async function getAlbums() {
           </a>
         </div>
       </div>
-      
-      
-      
       `,
       )
       .slice(0)
@@ -114,63 +116,108 @@ async function getAlbums() {
     contentAlbums.innerHTML = view;
   } catch (error) {
     console.log(error);
-
-   
   }
 }
 
+// ── REPRODUCTOR PERSONALIZADO ──────────────────────────────
+let currentAudio = null;
+let currentBtn = null;
+
+function togglePlay(btn) {
+  const container = btn.closest('.custom-audio');
+  const src = container.dataset.src;
+  const progressBar = container.querySelector('.progress-bar');
+  const timeEl = container.querySelector('.time');
+
+  // Si hay audio sonando, lo pausamos
+  if (currentAudio && !currentAudio.paused) {
+    currentAudio.pause();
+    if (currentBtn) currentBtn.textContent = '▶';
+    // Si era el mismo, solo pausar
+    if (currentAudio.dataset && currentAudio.dataset.src === src) {
+      currentAudio = null;
+      currentBtn = null;
+      return;
+    }
+  }
+
+  // Crear nuevo audio
+  const audio = new Audio(src);
+  audio.dataset = { src };
+  currentAudio = audio;
+  currentBtn = btn;
+  btn.textContent = '⏸';
+
+  audio.ontimeupdate = () => {
+    const pct = (audio.currentTime / audio.duration) * 100 || 0;
+    progressBar.style.width = pct + '%';
+    const secs = Math.floor(audio.currentTime);
+    timeEl.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  };
+
+  audio.onended = () => {
+    btn.textContent = '▶';
+    progressBar.style.width = '0%';
+    timeEl.textContent = '0:00';
+    currentAudio = null;
+    currentBtn = null;
+  };
+
+  audio.onerror = () => {
+    btn.textContent = '✕';
+    btn.title = 'Preview no disponible';
+  };
+
+  audio.play();
+}
+
+function seek(event, bar) {
+  if (!currentAudio || !currentAudio.duration) return;
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  currentAudio.currentTime = pct * currentAudio.duration;
+}
+// ──────────────────────────────────────────────────────────
+
 async function GetPlaylist() {
   try {
-    const tracks = await fetchData(APY_PLAYLIST, optionsPlaylist);
+    const tracks = await searchTracks();
+    console.log(tracks);
 
-    tracks.items.slice(0, 32).forEach((Item) => {
-      const track = Item.track;
+    tracks.slice(0, 32).forEach((Item) => {
+      const track = Item;
       const songCard = document.createElement('div');
-      songCard.classList.add('song-card'); // Agrega la clase 'song-card' al div principal
+      songCard.classList.add('song-card');
 
-      // Crea el reproductor de audio personalizado
-      const audioPlayer = document.createElement('div');
-      audioPlayer.classList.add('audio-player');
+      songCard.innerHTML = `
+        <div class="audio-player">
+          <div class="song-image-container">
+            <img src="${track.album.cover}" alt="${track.title}" class="song-image">
+          </div>
+          <div class="song-details">
+            <p class="song-name">${track.title}</p>
 
-      audioPlayer.innerHTML = `
-      <div class="audio-player" >
-        <div class="song-image-container" >
-          <img src="${track.album.images[1].url}" alt="Song Preview" class="song-image">
-        </div>
-        <div class="song-details">
-          <p class="song-name">${track.name}</p>
-          <audio controls>
-            <source src="${track.preview_url}" type="audio/mpeg">
-            Tu navegador no soporta la reproducción de audio.
-          </audio>
-          <a href="${track.external_urls.spotify}" class="hover:text-gray-800">
-            <i class="fa-brands fa-spotify" style="font-size: 36px;"></i>
-          </a>
-        </div>
+            <div class="custom-audio" data-src="${track.preview}">
+              <button class="play-btn" onclick="togglePlay(this)">▶</button>
+              <div class="progress-bar-container" onclick="seek(event, this)">
+                <div class="progress-bar"></div>
+              </div>
+              <span class="time">0:00</span>
+            </div>
+
+            <a href="${track.link}" target="_blank" class="deezer-link">
+              <i class="fa-brands fa-deezer" style="font-size: 28px;"></i>
+            </a>
+          </div>
         </div>
       `;
 
-      songCard.appendChild(audioPlayer);
       content_songCard.appendChild(songCard);
     });
   } catch (error) {
     console.log(error);
   }
 }
-
-// Selecciona todos los elementos de audio
-const audioElements = document.querySelectorAll('audio');
-
-// Itera sobre cada elemento de audio
-audioElements.forEach((audio) => {
-  // Modifica los estilos de los controles
-  const controls = audio.controls;
-  controls.style.color = 'white'; // Cambia el color de los botones a blanco
-  controls.style.border = 'none'; // Elimina cualquier borde
-});
-
-
-
 
 (async () => {
   getVideos();
